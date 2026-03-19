@@ -1,8 +1,63 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import {
+  redirectToSpotifyLogin,
+  handleSpotifyCallback,
+  getAccessToken,
+  getCurrentlyPlaying,
+} from "./spotify";
+
 
 export default function App() {
   const mountRef = useRef(null);
+  const [track, setTrack] = useState(null);
+  const [spotifyReady, setSpotifyReady] = useState(false);
+  useEffect(() => {
+    const initSpotify = async () => {
+      if (
+        window.location.pathname === "/callback" ||
+        window.location.search.includes("code=")
+      ) {
+        await handleSpotifyCallback();
+      }
+
+      const token = getAccessToken();
+
+      if (token) {
+        setSpotifyReady(true);
+
+        try {
+          const current = await getCurrentlyPlaying();
+          if (current?.item) {
+            setTrack(current.item);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+
+    initSpotify();
+  }, []);
+
+
+  useEffect(() => {
+    if (!spotifyReady) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const current = await getCurrentlyPlaying();
+        if (current?.item) {
+          setTrack(current.item);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [spotifyReady]);
+
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -213,5 +268,38 @@ export default function App() {
     };
   }, []);
 
-  return <div ref={mountRef} style={{ width: "100vw", height: "100vh" }} />;
+  return (
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      <div ref={mountRef} style={{ width: "100vw", height: "100vh" }} />
+
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          left: 20,
+          zIndex: 10,
+          color: "white",
+          fontFamily: "sans-serif",
+          background: "rgba(0,0,0,0.35)",
+          padding: "12px 16px",
+          borderRadius: "12px",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        {!spotifyReady ? (
+          <button onClick={redirectToSpotifyLogin}>Connect Spotify</button>
+        ) : track ? (
+          <div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>Now Playing</div>
+            <div style={{ fontWeight: 700 }}>{track.name}</div>
+            <div style={{ opacity: 0.8 }}>
+              {track.artists.map((a) => a.name).join(", ")}
+            </div>
+          </div>
+        ) : (
+          <div>No active Spotify track</div>
+        )}
+      </div>
+    </div>
+  );
 }
