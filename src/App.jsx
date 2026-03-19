@@ -117,63 +117,6 @@ export default function App() {
     const halo = new THREE.Points(haloGeometry, haloMaterial);
     scene.add(halo);
 
-    const flareGroup = new THREE.Group();
-
-function createFlareArc(radius = 2.1, arcLength = 1.0, height = 0.8, pointsCount = 180) {
-  const flarePositions = new Float32Array(pointsCount * 3);
-
-  const baseAngle = Math.random() * Math.PI * 2;
-  const tilt = (Math.random() - 0.5) * 0.8;
-
-  for (let i = 0; i < pointsCount; i++) {
-    const t = i / (pointsCount - 1);
-    const angle = baseAngle + (t - 0.5) * arcLength;
-
-    const r = radius + Math.sin(t * Math.PI) * height;
-
-    let x = Math.cos(angle) * r;
-    let y = Math.sin(angle) * r;
-    let z = Math.sin(t * Math.PI) * 0.4;
-
-    const cosTilt = Math.cos(tilt);
-    const sinTilt = Math.sin(tilt);
-
-    const yTilted = y * cosTilt - z * sinTilt;
-    const zTilted = y * sinTilt + z * cosTilt;
-
-    flarePositions[i * 3] = x;
-    flarePositions[i * 3 + 1] = yTilted;
-    flarePositions[i * 3 + 2] = zTilted;
-  }
-
-  const flareGeometry = new THREE.BufferGeometry();
-  flareGeometry.setAttribute("position", new THREE.BufferAttribute(flarePositions, 3));
-
-  const flareMaterial = new THREE.PointsMaterial({
-    color: 0x9fd8ff,
-    size: 0.018,
-    transparent: true,
-    opacity: 0.45,
-  });
-
-  const flare = new THREE.Points(flareGeometry, flareMaterial);
-  flare.userData = { flareGeometry, flareMaterial };
-  return flare;
-}
-
-for (let i = 0; i < 3; i++) {
-  flareGroup.add(
-    createFlareArc(
-      2.0 + Math.random() * 0.3,
-      0.8 + Math.random() * 0.8,
-      0.5 + Math.random() * 0.9,
-      140
-    )
-  );
-}
-
-scene.add(flareGroup);
-
     let animationId;
 
     const clock = new THREE.Clock();
@@ -222,8 +165,8 @@ scene.add(flareGroup);
       stars.rotation.y += 0.0002;
       halo.rotation.y -= 0.00015;
       halo.rotation.x += 0.00008;
-      flareGroup.rotation.y += 0.0006;
-      flareGroup.rotation.x += 0.0002;
+
+    
       renderer.render(scene, camera);
 };
 
@@ -244,10 +187,6 @@ scene.add(flareGroup);
       material.dispose();
       haloGeometry.dispose();
       haloMaterial.dispose();
-      flareGroup.children.forEach((child) => {
-      child.userData.flareGeometry.dispose();
-      child.userData.flareMaterial.dispose();
-    });
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
