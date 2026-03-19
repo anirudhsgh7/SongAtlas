@@ -6,9 +6,32 @@ export default function App() {
 
   useEffect(() => {
     const mount = mountRef.current;
-
+    let analyser;
+    let dataArray;
+    let audioContext;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
+
+    const setupAudio = async () => {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(stream);
+      
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+      
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+      
+        source.connect(analyser);
+      } catch (err) {
+        console.error("Microphone access denied or failed:", err);
+      }
+    };
+
+    setupAudio();    
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -157,11 +180,45 @@ scene.add(flareGroup);
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-
+      let bass = 0;
+      let treble = 0;
+      let avg = 0;
+          
+      if (analyser && dataArray) {
+        analyser.getByteFrequencyData(dataArray);
+      
+        let bassSum = 0;
+        let trebleSum = 0;
+        let totalSum = 0;
+      
+        const bassEnd = Math.floor(dataArray.length * 0.15);
+        const trebleStart = Math.floor(dataArray.length * 0.6);
+      
+        for (let i = 0; i < dataArray.length; i++) {
+          totalSum += dataArray[i];
+        
+          if (i < bassEnd) bassSum += dataArray[i];
+          if (i > trebleStart) trebleSum += dataArray[i];
+        }
+      
+        bass = bassSum / bassEnd / 255;
+        treble = trebleSum / (dataArray.length - trebleStart) / 255;
+        avg = totalSum / dataArray.length / 255;
+      }
       const t = clock.getElapsedTime();
-      const pulse = 1 + Math.sin(t * 2.0) * 0.03;
 
-      stars.scale.set(pulse, pulse, pulse);
+      const basePulse = 1 + Math.sin(t * 2.0) * 0.02;
+      const audioPulse = 1 + bass * 0.35;
+          
+      stars.scale.set(
+        basePulse * audioPulse,
+        basePulse * audioPulse,
+        basePulse * audioPulse
+      );
+      
+      material.opacity = 0.55 + avg * 0.6;
+      haloMaterial.opacity = 0.08 + treble * 0.25;
+
       stars.rotation.y += 0.0002;
       halo.rotation.y -= 0.00015;
       halo.rotation.x += 0.00008;
