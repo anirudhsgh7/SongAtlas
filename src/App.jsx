@@ -39,7 +39,7 @@ export default function App() {
       0.1,
       1000
     );
-    camera.position.z = 6;
+    camera.position.z = 4;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -53,10 +53,10 @@ export default function App() {
 
       if (Math.random() < 0.75) {
     // dense inner core
-        radius = Math.cbrt(Math.random()) * 1.4;
+        radius = Math.cbrt(Math.random()) * 2.2;
       } else {
     // outer halo
-        radius = 1.4 + Math.random() * 1.0;
+        radius = 2.2 + Math.random() * 1.4;
       }
 
       const theta = Math.random() * Math.PI * 2;
@@ -89,9 +89,9 @@ export default function App() {
     
     const haloParticles = 2500;
     const haloPositions = new Float32Array(haloParticles * 3);
-
+    const haloBasePositions = new Float32Array(haloParticles * 3);
     for (let i = 0; i < haloParticles; i++) {
-      const radius = 2.2 + Math.random() * 0.8;
+      const radius = 3.2 + Math.random() * 1.4;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
     
@@ -102,6 +102,9 @@ export default function App() {
       haloPositions[i * 3] = x;
       haloPositions[i * 3 + 1] = y;
       haloPositions[i * 3 + 2] = z;
+      haloBasePositions[i * 3] = x;
+      haloBasePositions[i * 3 + 1] = y;
+      haloBasePositions[i * 3 + 2] = z;
     }
 
     const haloGeometry = new THREE.BufferGeometry();
@@ -166,7 +169,25 @@ export default function App() {
       halo.rotation.y -= 0.00015;
       halo.rotation.x += 0.00008;
 
-    
+      const haloArray = haloGeometry.attributes.position.array;
+
+      for (let i = 0; i < haloParticles; i++) {
+        const ix = i * 3;
+        const iy = i * 3 + 1;
+        const iz = i * 3 + 2;
+      
+        const baseX = haloBasePositions[ix];
+        const baseY = haloBasePositions[iy];
+        const baseZ = haloBasePositions[iz];
+      
+        const distortion = 1 + treble * 0.2 + Math.sin(t * 2 + i * 0.02) * 0.008;
+      
+        haloArray[ix] = baseX * distortion;
+        haloArray[iy] = baseY * distortion;
+        haloArray[iz] = baseZ * distortion;
+      }
+
+      haloGeometry.attributes.position.needsUpdate = true;    
       renderer.render(scene, camera);
 };
 
