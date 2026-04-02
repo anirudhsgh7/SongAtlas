@@ -1,16 +1,31 @@
-# React + Vite
+# 3D Audio Visualizer with Spotify Integration
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A real-time, browser-based 3D audio visualizer that converts audio signals into dynamic particle-based animations using modern web technologies.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Real-time audio visualization using the Web Audio API  
+- 3D particle system built with Three.js  
+- Frequency-based animation (bass, mid, treble response)  
+- Spotify Web Playback SDK integration (currently under debugging)  
+- Fast development setup using Vite  
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: React, JavaScript  
+- 3D Rendering: Three.js  
+- Audio Processing: Web Audio API  
+- Streaming Integration: Spotify Web Playback SDK  
+- Build Tool: Vite  
 
-## Expanding the ESLint configuration
+## How It Works
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Audio input is captured (microphone or playback source)  
+- Web Audio API analyzes frequency data via an analyser node  
+- Frequency values are mapped to visual parameters (particle movement, scale, etc.)  
+- Three.js renders a real-time 3D particle system reacting to audio  
+
+## Known Issues
+
+- Spotify playback stops after ~10 seconds (likely due to device/authentication constraints in the Web Playback SDK)  
+- Stability improvements are in progress  
