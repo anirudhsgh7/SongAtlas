@@ -4,6 +4,7 @@ const redirectUri = "http://127.0.0.1:5173/callback";
 const scopes = [
   "user-read-currently-playing",
   "user-read-playback-state",
+  "user-modify-playback-state",
 ];
 
 function generateRandomString(length) {
@@ -107,3 +108,102 @@ export async function getCurrentlyPlaying() {
 
   return await response.json();
 }
+
+export function loadSpotifyPlayer() {
+  return new Promise((resolve) => {
+    if (window.Spotify) {
+      resolve(window.Spotify);
+      return;
+    }
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      resolve(window.Spotify);
+    };
+  });
+}
+
+export async function createSpotifyPlayer(onStateChange, onReady) {
+  const Spotify = await loadSpotifyPlayer();
+  const token = getAccessToken();
+
+  if (!Spotify || !token) {
+    throw new Error("Spotify SDK or token missing");
+  }
+
+  const player = new Spotify.Player({
+    name: "SoundSpace Player",
+    getOAuthToken: (cb) => cb(getAccessToken()),
+    volume: 0.7,
+  });
+
+  player.addListener("ready", ({ device_id }) => {
+    onReady?.(device_id);
+  });
+
+  player.addListener("player_state_changed", (state) => {
+    onStateChange?.(state);
+  });
+
+  player.addListener("initialization_error", ({ message }) => {
+    console.error("init error:", message);
+  });
+
+  player.addListener("authentication_error", ({ message }) => {
+    console.error("auth error:", message);
+  });
+
+  player.addListener("account_error", ({ message }) => {
+    console.error("account error:", message);
+  });
+
+  player.addListener("playback_error", ({ message }) => {
+    console.error("playback error:", message);
+  });
+
+  await player.connect();
+  return player;
+}
+
+export async function transferPlayback(deviceId) {
+  const token = getAccessToken();
+
+  const response = await fetch("https://api.spotify.com/v1/me/player", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      device_ids: [deviceId],
+      play: false,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to transfer playback");
+  }
+}
+
+export async function playPauseSpotify(player) {
+  if (!player) return;
+  await player.togglePlay();
+}
+
+// export async function startPlayback(deviceId) {
+//   const token = getAccessToken();
+
+//   const response = await fetch(
+//     `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+//     {
+//       method: "PUT",
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         "Content-Type": "application/json",
+//       },
+//     }
+//   );
+
+//   if (!response.ok) {
+//     console.error("Start playback failed");
+//   }
+// }

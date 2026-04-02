@@ -5,13 +5,21 @@ import {
   handleSpotifyCallback,
   getAccessToken,
   getCurrentlyPlaying,
+  createSpotifyPlayer,
+  transferPlayback,
+  playPauseSpotify,
 } from "./spotify";
 
 
 export default function App() {
   const mountRef = useRef(null);
+  const audioContextRef = useRef(null);
   const [track, setTrack] = useState(null);
   const [spotifyReady, setSpotifyReady] = useState(false);
+  const [player, setPlayer] = useState(null);
+  const [deviceId, setDeviceId] = useState(null);
+  const [isPaused, setIsPaused] = useState(true);
+
   useEffect(() => {
     const initSpotify = async () => {
       if (
@@ -42,6 +50,60 @@ export default function App() {
 
 
   useEffect(() => {
+  if (!spotifyReady) return;
+
+  let mounted = true;
+  let localPlayer;
+
+  const initPlayer = async () => {
+    try {
+      localPlayer = await createSpotifyPlayer(
+        (state) => {
+          if (!state) return;
+
+          setIsPaused(state.paused);
+
+          const currentTrack = state.track_window?.current_track;
+          if (currentTrack) {
+            setTrack(currentTrack);
+          }
+        },
+        async (readyDeviceId) => {
+          if (!mounted) return;
+          setDeviceId(readyDeviceId);
+
+          // VERY IMPORTANT FIX
+          setTimeout(async () => {
+            try {
+              await localPlayer.activateElement();
+              await transferPlayback(readyDeviceId);
+              console.log("Transferred");
+            } catch (err) {
+              console.error(err);
+            }
+          }, 1500);
+        }
+      );
+
+      if (mounted) {
+        setPlayer(localPlayer);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  initPlayer();
+
+  return () => {
+    mounted = false;
+    if (localPlayer) {
+      localPlayer.disconnect();
+    }
+  };
+}, [spotifyReady]);
+
+  useEffect(() => {
     if (!spotifyReady) return;
 
     const interval = setInterval(async () => {
@@ -63,18 +125,18 @@ export default function App() {
     const mount = mountRef.current;
     let analyser;
     let dataArray;
-    let audioContext;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
 
     const setupAudio = async () => {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioContext.createMediaStreamSource(stream);
+        await audioContextRef.current.resume();
+        const source = audioContextRef.current.createMediaStreamSource(stream);
       
-        analyser = audioContext.createAnalyser();
+        analyser = audioContextRef.current.createAnalyser();
         analyser.fftSize = 256;
       
         const bufferLength = analyser.frequencyBinCount;
@@ -291,6 +353,46 @@ export default function App() {
         ) : track ? (
           <div>
             <div style={{ fontSize: 12, opacity: 0.7 }}>Now Playing</div>
+            {spotifyReady && (
+              <div style={{ marginTop: 10 }}>
+                <button
+                  onClick={async () => {
+                    if (deviceId) {
+                      await transferPlayback(deviceId);
+                      console.log("Switched to SoundSpace Player");
+                    }
+                  }}
+                >
+                  Use SoundSpace Player
+                </button>
+                
+                <br /><br />
+                
+                <button
+                  onClick={async () => {
+                    if (player) {
+                      await player.activateElement();
+                      if (audioContextRef.current) {
+                        await audioContextRef.current.resume();
+                      }
+                      await player.resume();
+                    }
+                  }}
+                >
+                  Play
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    if (player) {
+                      await player.pause(); // important
+                    }
+                  }}
+                >
+                  Pause
+                </button>
+              </div>
+            )}
             <div style={{ fontWeight: 700 }}>{track.name}</div>
             <div style={{ opacity: 0.8 }}>
               {track.artists.map((a) => a.name).join(", ")}
